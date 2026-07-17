@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="https://i.postimg.cc/cCPSF4Bp/Chat-GPT-Image-Jun-20-2025-12-11-32-PM.png">
+    <title>Nexus Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif;
+            color: #CC9E13;
+        }
+
+        body {
+            background: #26283F;
+            color: #CC9E13;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .stars {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .star {
+            position: absolute;
+            background: #CC9E13;
+            border-radius: 50%;
+            animation: twinkle var(--duration) ease-in-out infinite;
+        }
+
+        .shooting-star {
+            position: absolute;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #464ea3);
+            animation: shoot 5s linear infinite;
+        }
+
+        .container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 4rem;
+            background: linear-gradient(45deg, #dca911, #f6ff00, #dca911);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0 0 20px 0;
+            text-shadow: 0 0 30px rgb(204, 158, 19);
+            animation: gradientShift 4s ease infinite;
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: #7bdfff;
+            height: 30px;
+            overflow: hidden;
+            white-space: nowrap;
+            border-right: 2px solid #4fc3f7;
+            animation: typing 3s steps(30) infinite, blink 0.75s step-end infinite;
+            margin-bottom: 30px;
+        }
+
+        #search-form {
+            width: 100%;
+            max-width: 700px;
+            position: relative;
+            z-index: 100;
+        }
+
+        #query-input {
+            width: 100%;
+            padding: 20px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 35px;
+            background: rgba(0, 30, 60, 0.3);
+            color: #fff;
+            backdrop-filter: blur(15px);
+            border: 1px solid #2f3577;
+            transition: all 0.7s ease;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        #proxy-frame {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Tabs styling */
+        .nav-tabs {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            color: #CC9E13;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 10px 20px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #444871;
+            color: #CC9E13;
+        }
+
+        /* Content containers */
+        .content-container {
+            display: none;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        .content-container.active {
+            display: grid;
+        }
+
+        /* Item cards */
+        .item-card {
+            background: rgba(0, 30, 60, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #1a4570;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .item-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .item-title {
+            color: #CC9E13;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+        }
+
+        .item-description {
+            color: #CC9E13;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .launch-button {
+            background: #26283F;
+            color: #CC9E13;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        /* Settings styles */
+        .settings-container {
+            display: none;
+            width: 100%;
+            max-width: 700px;
+            padding: 20px;
+        }
+
+        .setting-item {
+            background: rgba(0, 30, 60, 0.3);
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #1a4570;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #26283F;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: #4fc3f7;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: #26283F;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(26px);
+        }
+
+        .admin-code-input {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1a4570;
+            background: rgba(0, 30, 60, 0.3);
+            color: white;
+            margin-top: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.4rem;
+            color: #2f3577;
+            height: 30px;
+            overflow: hidden;
+            white-space: nowrap;
+            margin-bottom: 5px;
+            opacity: 0.15;
+        }
+
+
+
+
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        @keyframes blink {
+
+            from,
+            to {
+                border-color: transparent
+            }
+
+        }
+
+        @keyframes twinkle {
+
+            0%,
+            100% {
+                opacity: 0.3;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes shoot {
+            0% {
+                transform: translateX(-100%) translateY(-100%);
+                opacity: 0;
+            }
+
+            20% {
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateX(200%) translateY(200%);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <nav class="nav-tabs">
+            <button class="tab-button active" onclick="switchTab('search')">Search</button>
+            <button class="tab-button" onclick="switchTab('games')">Games</button>
+            <button class="tab-button" onclick="switchTab('apps')">Apps</button>
+            <button class="tab-button" onclick="switchTab('settings')">Settings</button>
+        </nav>
+
+        <div class="header">
+            <h1>Nexus Web</h1>
+            <div class="subtitle">Credits To: galaxy for inspo</div>
+        </div>
+
+        <form id="search-form" onsubmit="searchWeb(event)" class="active">
+            <input type="text" id="query-input" placeholder="Search the Web..." autocomplete="off" autofocus>
+        </form>
+
+        <div id="games-container" class="content-container">
+            <!-- Game items add here -->
+        </div>
+
+        <div id="apps-container" class="content-container">
+            <!-- App items will be added here -->
+        </div>
+
+        <div id="settings-container" class="settings-container">
+            <div class="setting-item">
+                <h3>Blob Proxy Mode</h3>
+                <label class="switch">
+                    <input type="checkbox" id="blob-mode">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <h3>about:blank Mode</h3>
+                <label class="switch">
+                    <input type="checkbox" id="blank-mode">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-item">
+                <h3>Performance Mode (Admin Only)</h3>
+                <input type="password" class="admin-code-input" placeholder="Enter admin code">
+                <button class="launch-button" onclick="enablePerformanceMode()">Activate</button>
+            </div>
+        </div>
+    </div>
+
+    <iframe id="proxy-frame"></iframe>
+
+
+
+    <script>
+        // Create animated stars
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+
+            // Twinkling stars
+            for (let i = 0; i < 300; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = `${Math.random() * 100}%`;
+                star.style.top = `${Math.random() * 100}%`;
+                star.style.width = `${Math.random() * 3}px`;
+                star.style.height = star.style.width;
+                star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                star.style.opacity = Math.random();
+                starsContainer.appendChild(star);
+            }
+
+            // Shooting stars
+            setInterval(() => {
+                const shooter = document.createElement('div');
+                shooter.className = 'shooting-star';
+                shooter.style.left = `${Math.random() * 100}%`;
+                shooter.style.top = `${Math.random() * 100}%`;
+                starsContainer.appendChild(shooter);
+
+                setTimeout(() => shooter.remove(), 4000);
+            }, 3000);
+        }
+
+        function searchWeb(event) {
+            event.preventDefault();
+            const input = document.getElementById('query-input');
+            const frame = document.getElementById('proxy-frame');
+
+            if (input.value.trim()) {
+                let baseUrl = 'https://duckduckgo.com/?q=';
+                const searchQuery = encodeURIComponent(input.value.trim());
+                let proxyUrl = `https://www.pvhr63.62.72.3.251.nip.io/static/embed.html#${baseUrl}${searchQuery}`;
+
+                if (document.getElementById('blank-mode').checked) {
+                    proxyUrl = `about:blank#https://galaxy.playcode.io`;
+                } else if (document.getElementById('blob-mode').checked) {
+                    const blobContent = `<script>window.location.href="https://galaxy.playcode.io"<\/script>`;
+                    proxyUrl = URL.createObjectURL(new Blob([blobContent], { type: 'text/html' }));
+                }
+
+                frame.src = proxyUrl;
+                frame.style.zIndex = '999';
+                frame.style.opacity = '1';
+            }
+        }
+
+        // Content data
+        const games = [
+            { title: "Slope Game", description: "Fast-paste slope game", url: "https://storage.classroomsarecool.mex.com/slope-2/index.html" },
+            { title: "1v1.LOL", description: "Competitive shooting game", url: "https://pizzaedition.one/g/1v1lol/" },
+            { title: "PaperIO", description: "Take Over The Map as you Grow", url: "https://read.ebookswest.com.au/g/paperio2/" },
+            { title: "Drift Boss", description: "Fast-Paste Drift Simulator", url: "https://pizzaedition.one/g/driftboss/" },
+            { title: "Poly Track", description: "Race Car Sim", url: "https://read.ebookswest.com.au/g/polytrack/" },
+            { title: "Geometry Dash", description: "Geo Dash", url: "https://read.ebookswest.com.au/g/geometrydash/" }
+        ];
+
+        const apps = [
+            { title: "Spotify", description: "Music Player", url: "https://open.spotify.com/" },
+            { title: "Heartive", description: "Watch Movies and Tv shows", url: "https://heartive.pages.dev/" },
+            { title: "Geforce Now", description: "Play PC games", url: "https://www.nvidia.com/en-us/geforce-now/" },
+            { title: "kahoot Cheats", description: "kahoot Cheats", url: "https://kahoot.club/" }
+        ];
+
+        // Create content cards
+        function createContentCards(containerId, items) {
+            const container = document.getElementById(containerId);
+            items.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <h3 class="item-title">${item.title}</h3>
+                    <p class="item-description">${item.description}</p>
+                    <button class="launch-button" onclick="launchItem('${item.url}')">Launch</button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function launchItem(url) {
+            const frame = document.getElementById('proxy-frame');
+            let proxyUrl = `https://www.pvhr63.62.72.3.251.nip.io/static/embed.html#${url}`;
+
+            if (document.getElementById('blank-mode').checked) {
+                proxyUrl = `about:blank#https://galaxy.playcode.io`;
+            } else if (document.getElementById('blob-mode').checked) {
+                const blobContent = `<script>window.location.href="https://galaxy.playcode.io"<\/script>`;
+                proxyUrl = URL.createObjectURL(new Blob([blobContent], { type: 'text/html' }));
+            }
+
+            frame.src = proxyUrl;
+            frame.style.zIndex = '999';
+            frame.style.opacity = '1';
+        }
+
+        function enablePerformanceMode() {
+            const code = document.querySelector('.admin-code-input').value;
+            if (code === '1210') {
+                document.getElementById('stars').style.display = 'none';
+                document.querySelectorAll('*').forEach(el => {
+                    el.style.animation = 'none';
+                });
+                alert('Performance mode activated! Animations disabled.');
+            } else {
+                alert('Invalid admin code!');
+            }
+        }
+
+        function switchTab(tab) {
+            const tabs = ['search', 'games', 'apps', 'settings'];
+            const buttons = document.querySelectorAll('.tab-button');
+            const containers = document.querySelectorAll('.content-container, .settings-container');
+            const searchForm = document.getElementById('search-form');
+
+            buttons.forEach(btn => btn.classList.remove('active'));
+            containers.forEach(container => container.style.display = 'none');
+
+            if (tab === 'search') {
+                searchForm.style.display = 'block';
+                document.querySelector(`.tab-button[onclick*="${tab}"]`).classList.add('active');
+            } else if (tab === 'settings') {
+                document.getElementById('settings-container').style.display = 'block';
+                searchForm.style.display = 'none';
+                document.querySelector(`.tab-button[onclick*="${tab}"]`).classList.add('active');
+            } else {
+                document.getElementById(`${tab}-container`).style.display = 'grid';
+                searchForm.style.display = 'none';
+                document.querySelector(`.tab-button[onclick*="${tab}"]`).classList.add('active');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            createStars();
+            createContentCards('games-container', games);
+            createContentCards('apps-container', apps);
+            document.getElementById('query-input').value = '';
+
+            // Load saved settings
+            document.getElementById('blank-mode').checked = localStorage.getItem('blankMode') === 'true';
+            document.getElementById('blob-mode').checked = localStorage.getItem('blobMode') === 'true';
+
+            // Save settings when changed
+            document.getElementById('blank-mode').addEventListener('change', (e) => {
+                localStorage.setItem('blankMode', e.target.checked);
+                if (e.target.checked) document.getElementById('blob-mode').checked = false;
+            });
+
+            document.getElementById('blob-mode').addEventListener('change', (e) => {
+                localStorage.setItem('blobMode', e.target.checked);
+                if (e.target.checked) document.getElementById('blank-mode').checked = false;
+            });
+        });
+    </script>
+</body>
+
+</html>

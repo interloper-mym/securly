@@ -1,0 +1,822 @@
+<!doctype html><html><head></head><body><!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Flycast WASM</title>
+	<style>
+		*,
+		*::before,
+		*::after {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			height: 100%;
+			background: #000;
+			overflow: hidden;
+		}
+
+		/* ── Launcher ── */
+		#launcher {
+			position: fixed;
+			inset: 0;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+			gap: 28px;
+		}
+
+		#dz-rom {
+			position: relative;
+			cursor: pointer;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		#dz-rom input[type=file] {
+			position: absolute;
+			inset: 0;
+			opacity: 0;
+			cursor: pointer;
+			font-size: 0;
+		}
+
+		#drag-label {
+			color: #fff;
+			font-family: sans-serif;
+			font-size: 18px;
+			font-weight: 400;
+			pointer-events: none;
+			user-select: none;
+		}
+
+		/* ── BIOS toggle ── */
+		#bios-bar {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			font-family: monospace;
+			font-size: 11px;
+			color: rgba(255, 255, 255, 0.5);
+			user-select: none;
+		}
+
+		#bios-toggle {
+			display: flex;
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			border-radius: 4px;
+			overflow: hidden;
+		}
+
+		.bios-opt {
+			padding: 4px 10px;
+			cursor: pointer;
+			color: rgba(255, 255, 255, 0.4);
+			background: transparent;
+			border: none;
+			font-family: monospace;
+			font-size: 11px;
+			transition: all 0.15s;
+		}
+
+		.bios-opt.active {
+			background: rgba(255, 255, 255, 0.12);
+			color: #fff;
+		}
+
+		#bios-custom-zone {
+			display: none;
+			flex-direction: column;
+			align-items: center;
+			gap: 6px;
+			font-family: monospace;
+			font-size: 11px;
+			color: rgba(255, 255, 255, 0.4);
+		}
+
+		#bios-custom-zone.visible {
+			display: flex;
+		}
+
+		.bios-file-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.bios-file-label {
+			position: relative;
+			cursor: pointer;
+			padding: 3px 9px;
+			border: 1px solid rgba(255, 255, 255, 0.15);
+			border-radius: 3px;
+			color: rgba(255, 255, 255, 0.5);
+			transition: all 0.15s;
+		}
+
+		.bios-file-label:hover {
+			color: #fff;
+			border-color: rgba(255, 255, 255, 0.4);
+		}
+
+		.bios-file-label.loaded {
+			color: #7fff7f;
+			border-color: rgba(127, 255, 127, 0.4);
+		}
+
+		.bios-file-label input {
+			position: absolute;
+			inset: 0;
+			opacity: 0;
+			cursor: pointer;
+			font-size: 0;
+		}
+
+		#bios-status {
+			color: rgba(255, 255, 255, 0.3);
+			font-size: 10px;
+		}
+
+		/* ── Start button ── */
+		#start-btn {
+			padding: 8px 28px;
+			font-family: monospace;
+			font-size: 13px;
+			color: rgba(255, 255, 255, 0.25);
+			background: transparent;
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			border-radius: 4px;
+			cursor: default;
+			transition: all 0.2s;
+			user-select: none;
+			display: none;
+		}
+
+		#start-btn.ready {
+			color: #fff;
+			border-color: rgba(255, 255, 255, 0.4);
+			cursor: pointer;
+		}
+
+		#start-btn.ready:hover {
+			background: rgba(255, 255, 255, 0.08);
+			border-color: rgba(255, 255, 255, 0.7);
+		}
+
+		/* ── Made-by ── */
+		#made-by {
+			position: fixed;
+			top: 14px;
+			right: 18px;
+			color: #fff;
+			font-family: sans-serif;
+			font-size: 13px;
+			font-weight: 400;
+			pointer-events: none;
+			user-select: none;
+		}
+
+		/* ── Emulator view ── */
+		#emu-view {
+			display: none;
+			position: fixed;
+			inset: 0;
+			background: #000;
+			z-index: 500;
+		}
+
+		#emu-frame {
+			width: 100%;
+			height: 100%;
+			border: none;
+			background: #000;
+			display: block;
+		}
+
+		#back-btn {
+			position: fixed;
+			top: 14px;
+			left: 14px;
+			z-index: 600;
+			padding: 6px 14px;
+			font-family: monospace;
+			font-size: 11px;
+			color: rgba(255, 255, 255, 0.4);
+			background: rgba(0, 0, 0, 0.7);
+			border: 1px solid rgba(255, 255, 255, 0.1);
+			cursor: pointer;
+			transition: all 0.2s;
+		}
+
+		#back-btn:hover {
+			opacity: 1;
+			color: #fff;
+		}
+	</style>
+</head>
+
+<body>
+
+	<div id="launcher">
+		<div id="dz-rom">
+			<input type="file" id="rom-input" accept=".chd,.cdi,.cue,.zip,.iso">
+			<span id="drag-label">drag rom</span>
+		</div>
+
+		<div id="bios-bar">
+			<span>BIOS</span>
+			<div id="bios-toggle">
+				<button class="bios-opt active" data-mode="builtin">built-in</button>
+				<button class="bios-opt"        data-mode="custom">custom</button>
+			</div>
+		</div>
+
+		<div id="bios-custom-zone">
+			<div class="bios-file-row">
+				<label class="bios-file-label" id="boot-label">
+        dc_boot.bin
+        <input type="file" id="boot-input" accept=".bin">
+      </label>
+				<label class="bios-file-label" id="flash-label">
+        dc_flash.bin
+        <input type="file" id="flash-input" accept=".bin">
+      </label>
+			</div>
+			<div id="bios-status">load both files to use custom bios</div>
+		</div>
+
+		<button id="start-btn" onclick="startClicked()">start</button>
+	</div>
+
+	<div id="made-by">made by lucidx190</div>
+
+	<div id="emu-view">
+		<button id="back-btn" onclick="exitEmulator()">&#8592; Exit</button>
+		<!-- iframe injected by launchEmulator() -->
+	</div>
+
+	<script>
+		'use strict';
+
+// ── Service Worker (COI headers) ─────────────────────────────────────────────
+
+const SW_SOURCE = `
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', e => {
+  if (!e.request.url.startsWith('http')) return;
+  e.respondWith(
+    fetch(e.request).then(res => {
+      if (res.type === 'opaque') return res;
+      const headers = new Headers(res.headers);
+      headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+      headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+      headers.set('Cross-Origin-Resource-Policy', 'cross-origin');
+      return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+    }).catch(() => fetch(e.request))
+  );
+});
+`;
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const CDN = 'https://cdn.jsdelivr.net/gh/LucidX190/flycastwasmdependencies@main/';
+const GH  = 'https://github.com/LucidX190/flycastwasmdependencies/raw/refs/heads/main/';
+
+const DEP_FILES = {
+  data:  'flycast-wasm.data',
+  js:    'flycast_libretro.js',
+  wasm:  'flycast_libretro.wasm',
+  boot:  'dc_boot.bin',
+  flash: 'dc_flash.bin',
+};
+const DEP_MIME = {
+  data:  'application/octet-stream',
+  js:    'application/javascript',
+  wasm:  'application/wasm',
+  boot:  'application/octet-stream',
+  flash: 'application/octet-stream',
+};
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+// Raw ArrayBuffers — everything goes as ArrayBuffer so the iframe can
+// create its own blob URLs (parent blob URLs aren't reliably accessible
+// from a srcdoc iframe).
+const bufs = {
+  data: null, js: null, wasm: null,  // fetched deps
+  boot: null, flash: null,           // builtin BIOS (fetched)
+  bootCustom: null, flashCustom: null, // user-supplied BIOS
+  rom: null,
+};
+let romName    = '';
+let depsLoaded = false;
+let biosMode   = 'builtin'; // 'builtin' | 'custom'
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function safeReload() {
+  const clean = location.href
+    .replace(/([?&])coi=1(&|$)/, '$1')
+    .replace(/[?&]$/, '')
+    .replace(/\?$/, '');
+  location.replace(clean || location.pathname);
+}
+
+function activeBios() {
+  if (biosMode === 'custom' && bufs.bootCustom && bufs.flashCustom)
+    return { boot: bufs.bootCustom, flash: bufs.flashCustom };
+  return { boot: bufs.boot, flash: bufs.flash };
+}
+
+// ── BIOS toggle UI ───────────────────────────────────────────────────────────
+
+document.querySelectorAll('.bios-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.bios-opt').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    biosMode = btn.dataset.mode;
+    document.getElementById('bios-custom-zone').classList.toggle('visible', biosMode === 'custom');
+    checkReady();
+  });
+});
+
+function loadBiosFile(file, key, labelId) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    bufs[key] = e.target.result;
+    document.getElementById(labelId).classList.add('loaded');
+    const both = bufs.bootCustom && bufs.flashCustom;
+    document.getElementById('bios-status').textContent =
+      both ? 'custom bios ready' : 'load both files to use custom bios';
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+document.getElementById('boot-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadBiosFile(e.target.files[0], 'bootCustom', 'boot-label');
+});
+document.getElementById('flash-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadBiosFile(e.target.files[0], 'flashCustom', 'flash-label');
+});
+
+// ── Boot / SW ────────────────────────────────────────────────────────────────
+
+async function boot() {
+  if (self.crossOriginIsolated) { fetchDeps(); return; }
+  if (!('serviceWorker' in navigator)) { fetchDeps(); return; }
+  try {
+    const blob = new Blob([SW_SOURCE], { type: 'application/javascript' });
+    const reg  = await navigator.serviceWorker
+      .register(URL.createObjectURL(blob), { scope: './' })
+      .catch(() => null);
+    if (!reg) { fetchDeps(); return; }
+    await navigator.serviceWorker.ready;
+    if (!location.search.includes('coi=1')) {
+      location.replace(location.href + (location.search ? '&' : '?') + 'coi=1');
+      return;
+    }
+    fetchDeps();
+  } catch(err) { fetchDeps(); }
+}
+
+// ── Dep fetching ─────────────────────────────────────────────────────────────
+
+async function fetchWithFallback(filename) {
+  for (const url of [CDN + filename, GH + filename]) {
+    try { const r = await fetch(url); if (r.ok) return r; } catch(e) {}
+  }
+  throw new Error('All sources failed for ' + filename);
+}
+
+async function fetchDeps() {
+  try {
+    await Promise.all(Object.keys(DEP_FILES).map(async key => {
+      const res = await fetchWithFallback(DEP_FILES[key]);
+      bufs[key] = await res.arrayBuffer();
+    }));
+    depsLoaded = true;
+    checkReady();
+  } catch(err) {
+    document.getElementById('drag-label').textContent = 'load error — check console';
+    console.error('[fw] dep fetch error:', err);
+  }
+}
+
+// ── File picker ──────────────────────────────────────────────────────────────
+
+(function() {
+  const dzRom = document.getElementById('dz-rom');
+  const input  = document.getElementById('rom-input');
+
+  // Only the drag-label area (not the whole screen) is the click target
+  // so the BIOS file inputs don't get swallowed.
+  input.addEventListener('change', () => { if (input.files[0]) pickRom(input.files[0]); });
+
+  // Drag-and-drop still works anywhere on the launcher
+  document.getElementById('launcher').addEventListener('dragover', e => e.preventDefault());
+  document.getElementById('launcher').addEventListener('drop', e => {
+    e.preventDefault();
+    if (e.dataTransfer.files[0]) pickRom(e.dataTransfer.files[0]);
+  });
+})();
+
+function pickRom(file) {
+  romName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    bufs.rom = e.target.result;
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+  document.getElementById('drag-label').textContent = file.name;
+}
+
+// ── Ready check ──────────────────────────────────────────────────────────────
+
+function checkReady() {
+  const btn = document.getElementById('start-btn');
+  const hasRom  = !!bufs.rom && !!depsLoaded;
+  const hasBios = biosMode === 'builtin' || (bufs.bootCustom && bufs.flashCustom);
+  const ready   = hasRom && hasBios;
+
+  btn.style.display = bufs.rom ? 'block' : 'none';
+  btn.classList.toggle('ready', !!ready);
+  btn.textContent = !depsLoaded       ? 'loading deps...'
+                  : !bufs.rom         ? 'drag a rom'
+                  : !ready            ? 'load bios files'
+                  :                     'start';
+}
+
+function startClicked() {
+  const btn = document.getElementById('start-btn');
+  if (!btn.classList.contains('ready')) return;
+  launchEmulator();
+}
+
+// ── iframe messages ──────────────────────────────────────────────────────────
+
+window.addEventListener('message', e => {
+  if (!e.data) return;
+  if (e.data.type === 'restart') launchEmulator();
+  if (e.data.type === 'crash')   safeReload();
+});
+
+// ── Launch / restart ─────────────────────────────────────────────────────────
+
+function launchEmulator() {
+  document.getElementById('launcher').style.display = 'none';
+  document.getElementById('emu-view').style.display = 'block';
+
+  const emuView = document.getElementById('emu-view');
+  const old = document.getElementById('emu-frame');
+  if (old) old.remove();
+
+  const frame  = document.createElement('iframe');
+  frame.id     = 'emu-frame';
+  frame.srcdoc = buildFrameHtml();
+  frame.setAttribute('allow', 'cross-origin-isolated');
+  emuView.appendChild(frame);
+
+  // Wait for iframe scripts to run, then send the payload.
+  // All assets sent as ArrayBuffers — the iframe creates its own blob URLs,
+  // avoiding any cross-frame blob-URL access issues.
+  frame.addEventListener('load', () => {
+    const bios = activeBios();
+    frame.contentWindow.postMessage({
+      type:    'init',
+      romBuf:  bufs.rom,
+      romName: romName,
+      bootBuf: bios.boot,
+      flashBuf: bios.flash,
+      dataBuf: bufs.data,
+      jsBuf:   bufs.js,
+      wasmBuf: bufs.wasm,
+    }, '*');
+  });
+}
+
+function exitEmulator() {
+  if (!confirm('Exit emulator? Unsaved progress will be lost.')) return;
+  safeReload();
+}
+
+// ── iframe HTML template ──────────────────────────────────────────────────────
+// The inner script closing tag is split via string concat ('CS' var below)
+// so the outer HTML parser does not see it and prematurely close this block.
+
+function buildFrameHtml() {
+  const CS = '</' + 'script>';  // closing tag for inner <script> elements
+  return `<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;overflow:hidden}
+#game{width:100%;height:100%}
+</style>
+</head><body>
+<div id="game"></div>
+<script>
+'use strict';
+
+// Forward SH4 crashes to parent
+window.addEventListener('error', function(e) {
+  if (e.error && e.error.constructor && e.error.constructor.name === 'SH4ThrownException') {
+    e.preventDefault();
+    parent.postMessage({ type: 'crash' }, '*');
+  }
+});
+window.addEventListener('unhandledrejection', function(e) {
+  if (e.reason && e.reason.constructor && e.reason.constructor.name === 'SH4ThrownException') {
+    e.preventDefault();
+    parent.postMessage({ type: 'crash' }, '*');
+  }
+});
+
+// Wait for init payload from parent
+window.addEventListener('message', function onInit(e) {
+  if (!e.data || e.data.type !== 'init') return;
+  window.removeEventListener('message', onInit);
+  startEJS(e.data);
+});
+
+function startEJS(cfg) {
+  // Recreate blob URLs from the ArrayBuffers we received.
+  // This is necessary because parent blob URLs are not reliably accessible
+  // from inside a srcdoc iframe.
+  var blobs = {
+    rom:   URL.createObjectURL(new Blob([cfg.romBuf],  { type: 'application/octet-stream' })),
+    boot:  URL.createObjectURL(new Blob([cfg.bootBuf], { type: 'application/octet-stream' })),
+    flash: URL.createObjectURL(new Blob([cfg.flashBuf],{ type: 'application/octet-stream' })),
+    data:  URL.createObjectURL(new Blob([cfg.dataBuf], { type: 'application/octet-stream' })),
+    js:    URL.createObjectURL(new Blob([cfg.jsBuf],   { type: 'application/javascript'   })),
+    wasm:  URL.createObjectURL(new Blob([cfg.wasmBuf], { type: 'application/wasm'         })),
+  };
+
+  var bootBuf  = new Uint8Array(cfg.bootBuf);
+  var flashBuf = new Uint8Array(cfg.flashBuf);
+  var romName  = cfg.romName;
+
+  patchConsole();
+  patchWebGL2();
+  installCoreInterceptor(blobs, romName);
+
+  window.EJS_debug               = false;
+  window.EJS_player              = '#game';
+  window.EJS_core                = 'flycast';
+  window.EJS_gameUrl             = 'http://local/rom/' + encodeURIComponent(romName);
+  window.EJS_startOnLoaded       = false;
+  window.EJS_color               = '#f03a00';
+  window.EJS_disableLocalStorage = true;
+  window.EJS_pathtodata          = 'https://cdn.emulatorjs.org/latest/data/';
+  window.EJS_Buttons             = { playPause: true, restart: true, mute: true, settings: true, fullscreen: true };
+  window.EJS_defaultOptions      = {
+    'reicast_boot_to_bios':          'disabled',
+    'reicast_hle_bios':              'disabled',
+    'reicast_threaded_rendering':    'disabled',
+    'reicast_synchronous_rendering': 'disabled',
+    'reicast_internal_resolution':   '640x480',
+    'reicast_mipmapping':            'disabled',
+    'reicast_anisotropic_filtering': '1',
+    'reicast_texupscale':            'disabled',
+    'reicast_enable_rttb':           'disabled',
+    'reicast_enable_purupuru':       'disabled',
+    'reicast_alpha_sorting':         'per-strip (fast, least accurate)',
+    'reicast_delay_frame_swapping':  'disabled',
+    'reicast_frame_skipping':        'enabled',
+    'reicast_framerate':             'normal',
+  };
+
+  var biosWritten = false;
+
+  function writeBiosAndPlay() {
+    var gm = window.EJS_emulator && window.EJS_emulator.gameManager;
+    var FS = gm && (gm.FS || (gm.Module && gm.Module.FS));
+    if (!FS || !bootBuf || !flashBuf) return setTimeout(writeBiosAndPlay, 80);
+
+    if (!biosWritten) biosWritten = true;
+
+    ['/', '/dc/'].forEach(function(dir) {
+      try { if (!FS.analyzePath(dir).exists) FS.mkdir(dir); } catch(ex) {}
+      try { FS.writeFile(dir + 'dc_boot.bin',  bootBuf);  } catch(ex) {}
+      try { FS.writeFile(dir + 'dc_flash.bin', flashBuf); } catch(ex) {}
+    });
+
+    // Force dynarec on
+    try {
+      var cfgDir  = '/home/web_user/.config/flycast';
+      var cfgPath = cfgDir + '/emu.cfg';
+      try {
+        if (!FS.analyzePath('/home/web_user/.config').exists) FS.mkdirTree('/home/web_user/.config');
+        if (!FS.analyzePath(cfgDir).exists) FS.mkdir(cfgDir);
+      } catch(ex) {}
+      var cfg = '';
+      try { cfg = new TextDecoder().decode(FS.readFile(cfgPath)); } catch(ex) {}
+      if (cfg.includes('Dynarec.Enabled = false')) {
+        FS.writeFile(cfgPath, cfg.replace('Dynarec.Enabled = false', 'Dynarec.Enabled = true'));
+      } else if (!cfg.includes('Dynarec.Enabled')) {
+        try { FS.writeFile(cfgPath, cfg + '\\n[Dynarec]\\nEnabled = true\\n'); } catch(ex) {}
+      }
+    } catch(ex) { console.warn('[fw] cfg patch error:', ex); }
+
+    // Patch retroarch config
+    try {
+      var raCfgPath = '/home/web_user/.config/retroarch/retroarch.cfg';
+      var raCfg = '';
+      try { raCfg = new TextDecoder().decode(FS.readFile(raCfgPath)); } catch(ex) {}
+      if (!raCfg.includes('system_directory'))
+        FS.writeFile(raCfgPath, raCfg + 'system_directory = "/"\\n');
+    } catch(ex) {}
+
+    [WebGL2RenderingContext, WebGLRenderingContext].forEach(function(Cls) {
+      if (!Cls || Cls.prototype.__glslPatched) return;
+      Cls.prototype.__glslPatched = true;
+      var orig = Cls.prototype.shaderSource;
+      Cls.prototype.shaderSource = function(shader, src) {
+        return orig.call(this, shader, src.replace(/^#version\\s+\\d+(?!\\s*es)/m, '#version 300 es'));
+      };
+    });
+
+    // Intercept restart — ask parent to rebuild the iframe (fresh JS context)
+    function doRestart() { parent.postMessage({ type: 'restart' }, '*'); }
+    try { window.EJS_emulator.restart = doRestart; } catch(ex) {}
+    try { if (gm && typeof gm.restart === 'function') gm.restart = doRestart; } catch(ex) {}
+    try {
+      var Mod = (gm && (gm.Module || gm)) || {};
+      if (typeof Mod._retro_reset === 'function') Mod._retro_reset = doRestart;
+    } catch(ex) {}
+
+    try { window.EJS_emulator.play(); } catch(ex) { console.error('[fw] play() error:', ex); }
+  }
+
+  window.EJS_ready = writeBiosAndPlay;
+
+  var s     = document.createElement('script');
+  s.src     = 'https://cdn.emulatorjs.org/latest/data/loader.js';
+  s.onerror = function(ex) { console.error('[fw] loader.js failed:', ex); };
+  document.body.appendChild(s);
+}
+
+function patchConsole() {
+  var NOISE = ['[EJS ','EJS_','emulatorjs','EmulatorJS','Core caching','cache item',
+               'Heap resize call','__syscall_mprotect','is not a valid value'];
+  ['log','warn','info','debug'].forEach(function(fn) {
+    var orig = console[fn];
+    console[fn] = function() {
+      var m = arguments[0];
+      if (typeof m === 'string' && NOISE.some(function(n) { return m.includes(n); })) return;
+      orig.apply(console, arguments);
+    };
+  });
+}
+
+function installCoreInterceptor(blobs, romName) {
+  function remap(url) {
+    var s = String(url);
+    if (s.startsWith('http://local/rom/'))              return blobs.rom;
+    if (s.startsWith('http://local/bios/dc_boot.bin'))  return blobs.boot;
+    if (s.startsWith('http://local/bios/dc_flash.bin')) return blobs.flash;
+    if (s.includes('flycast') || s.includes('reicast')) {
+      if (s.endsWith('.data')) return blobs.data;
+      if (s.endsWith('.wasm')) return blobs.wasm;
+      if (s.endsWith('.js'))   return blobs.js;
+    }
+    return null;
+  }
+  var origFetch = window.fetch;
+  window.fetch = function(input, init) {
+    var url = typeof input === 'string' ? input : input.url;
+    if (typeof url === 'string' && url.includes('flycast.json'))
+      return Promise.resolve(new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    var r = remap(url);
+    return origFetch(r || input, init);
+  };
+  var origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url) {
+    var rest = Array.prototype.slice.call(arguments, 2);
+    var r = remap(url);
+    return origOpen.apply(this, [method, r || url].concat(rest));
+  };
+}
+
+function patchWebGL2() {
+  function fixGLSL(src) {
+    return src
+      .replace(/^#version\\s+130/m, '#version 300 es')
+      .replace(/^#version\\s+140/m, '#version 300 es')
+      .replace(/^#version\\s+150/m, '#version 300 es')
+      .replace(/^#version\\s+330/m, '#version 300 es')
+      .replace(/^#version\\s+400/m, '#version 310 es')
+      .replace(/^#version\\s+410/m, '#version 310 es')
+      .replace(/^#version\\s+420/m, '#version 310 es')
+      .replace(/^#version\\s+430/m, '#version 310 es');
+  }
+
+  [WebGL2RenderingContext, WebGLRenderingContext].forEach(function(Cls) {
+    if (!Cls) return;
+    var orig = Cls.prototype.shaderSource;
+    Cls.prototype.shaderSource = function(shader, src) { return orig.call(this, shader, fixGLSL(src)); };
+  });
+
+  var origGetContext = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function(type, attrs) {
+    var ctx = origGetContext.call(this, type, attrs);
+    if (!ctx || !type.includes('webgl2') || ctx.__flycastPatched) return ctx;
+    ctx.__flycastPatched = true;
+
+    var origGetParam = ctx.getParameter.bind(ctx);
+    ctx.getParameter = function(pname) {
+      if (pname === 0x1F02 || pname === ctx.VERSION)                  return 'OpenGL ES 3.0 WebGL 2.0';
+      if (pname === 0x8B8C || pname === ctx.SHADING_LANGUAGE_VERSION) return 'OpenGL ES GLSL ES 3.00';
+      return origGetParam(pname);
+    };
+
+    var origGetError = ctx.getError.bind(ctx);
+    ctx.getError = function() {
+      var err = origGetError();
+      while (err === 0x500) err = origGetError();
+      return err;
+    };
+
+    var origGetShaderParam = ctx.getShaderParameter.bind(ctx);
+    ctx.getShaderParameter = function(shader, pname) {
+      var v = origGetShaderParam(shader, pname);
+      if (pname === ctx.COMPILE_STATUS && !v) { console.warn('[fw] shader compile failed'); return true; }
+      return v;
+    };
+
+    var origGetProgParam = ctx.getProgramParameter.bind(ctx);
+    ctx.getProgramParameter = function(prog, pname) {
+      var v = origGetProgParam(prog, pname);
+      if (pname === ctx.LINK_STATUS && !v) { console.warn('[fw] program link failed'); return true; }
+      return v;
+    };
+
+    var TB = {};
+    TB[ctx.TEXTURE_2D]       = ctx.TEXTURE_BINDING_2D;
+    TB[ctx.TEXTURE_CUBE_MAP] = ctx.TEXTURE_BINDING_CUBE_MAP;
+    TB[ctx.TEXTURE_3D]       = ctx.TEXTURE_BINDING_3D;
+    TB[ctx.TEXTURE_2D_ARRAY] = ctx.TEXTURE_BINDING_2D_ARRAY;
+
+    ['texParameteri','texParameterf'].forEach(function(fn) {
+      var orig2 = ctx[fn].bind(ctx);
+      ctx[fn] = function(target, pname, param) {
+        if (TB[target] && !origGetParam(TB[target])) return;
+        return orig2(target, pname, param);
+      };
+    });
+
+    // Only remap formats outright invalid in WebGL2.
+    // No catch-all fallback — unknown formats may be valid sized internalformats;
+    // remapping them corrupts texture data (causes white line artifacts).
+    var FMT = {
+      0x80E1: [0x8058, 0x1908],  // GL_BGRA    -> RGBA8, RGBA
+      0x80E0: [0x8051, 0x1907],  // GL_BGR     -> RGB8,  RGB
+      0x8052: [0x8051, 0x1907],  // GL_RGB10   -> RGB8,  RGB
+      0x8053: [0x8051, 0x1907],  // GL_RGB12   -> RGB8,  RGB
+      0x8057: [0x8058, 0x1908],  // GL_RGB5_A1 -> RGBA8, RGBA
+    };
+
+    var origTexImage2D = ctx.texImage2D.bind(ctx);
+    ctx.texImage2D = function(target, level, internalformat) {
+      var rest = Array.prototype.slice.call(arguments, 3);
+      var map  = FMT[internalformat];
+      if (map) {
+        var ifmt = map[0], fmt = map[1];
+        if (rest.length >= 6) rest[3] = fmt;
+        else if (rest.length >= 2) rest[0] = fmt;
+        return origTexImage2D.apply(ctx, [target, level, ifmt].concat(rest));
+      }
+      return origTexImage2D.apply(ctx, [target, level, internalformat].concat(rest));
+    };
+
+    var origTexStorage2D = ctx.texStorage2D && ctx.texStorage2D.bind(ctx);
+    if (origTexStorage2D) {
+      ctx.texStorage2D = function(target, levels, internalformat) {
+        var rest   = Array.prototype.slice.call(arguments, 3);
+        var mapped = FMT[internalformat] ? FMT[internalformat][0] : internalformat;
+        return origTexStorage2D.apply(ctx, [target, levels, mapped].concat(rest));
+      };
+    }
+
+    return ctx;
+  };
+}
+${CS}
+</body></html>`;
+}
+
+boot();
+	</script>
+</body>
+
+</html></body><html>
